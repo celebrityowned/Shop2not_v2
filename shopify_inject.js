@@ -296,7 +296,13 @@ async function fetchAndFillProductDetails(products, tbody, allData) {
             
             // --- Update the master product object with full details ---
             product.description = fullProduct.body_html;
-            product.price = fullProduct.variants[0] ? fullProduct.variants[0].price : '0.00';
+            const variant = fullProduct.variants[0];
+            if (variant && variant.price) {
+                const parsedPrice = parseFloat(variant.price);
+                product.price = isNaN(parsedPrice) ? 0 : Math.round(parsedPrice);
+            } else {
+                product.price = 0;
+            }
             product.sku = fullProduct.variants[0] ? fullProduct.variants[0].sku : '';
             product.quantity = fullProduct.variants[0] ? fullProduct.variants[0].inventory_quantity : 1;
             product.weight = fullProduct.variants[0] ? fullProduct.variants[0].grams : 0;
