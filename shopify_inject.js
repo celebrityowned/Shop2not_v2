@@ -412,6 +412,7 @@ function showModal(products, categories, whatnotConditions, whatnotShippingProfi
       <th>Main Category</th>
       <th>Sub Category</th>
       <th>Price</th>
+      <th>Type</th>
       <th>Condition</th>
       <th>Shipping Profile</th>
     </tr>
@@ -446,6 +447,13 @@ function showModal(products, categories, whatnotConditions, whatnotShippingProfi
       </td>
       <td>
         <input type="number" class="form-control" name="price" value="${product.price}" placeholder="e.g., 25.00">
+      </td>
+      <td>
+        <select class="form-control" name="type">
+          <option value="Auction" selected>Auction</option>
+          <option value="Buy it Now">Buy it Now</option>
+          <option value="Giveaway">Giveaway</option>
+        </select>
       </td>
       <td>
         <select class="form-control" name="condition">
@@ -597,7 +605,7 @@ function generateCsv(products) {
         const description = product.description ? product.description.replace(/\r?\n|\r/g, ' ').replace(/"/g, '""') : '';
         // Quantity, Type, Price
         const quantity = product.quantity != null ? product.quantity : '1';
-        const type = 'Auction';
+        const type = getVal('type');
         const price = getVal('price');
         // Shipping Profile (human-readable)
         const shippingDropdown = row.querySelector('[name="shippingProfile"]');
@@ -643,10 +651,21 @@ function generateCsv(products) {
     });
 
     let csvContent = headers.map(quote).join(",") + "\n" + rows.join("\n");
+    
+    // Generate timestamp for filename
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+    
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const link = document.createElement("a");
     link.setAttribute("href", URL.createObjectURL(blob));
-    link.setAttribute("download", "whatnot_export.csv");
+    link.setAttribute("download", `whatnot_export_${timestamp}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
