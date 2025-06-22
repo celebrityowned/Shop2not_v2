@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Shopify to Whatnot",
+  "version": "1.0",
+  "description": "A Chrome extension to export Shopify products to a Whatnot-compatible CSV format.",
+  "permissions": ["activeTab", "scripting", "cookies"],
+  "host_permissions": [
+    "https://admin.shopify.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "icons": {
+    "128": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://admin.shopify.com/store/*/products*"],
+      "js": [
+        "whatnot_taxonomy.js",
+        "whatnot_conditions.js",
+        "whatnot_shipping.js",
+        "shopify_inject.js"
+      ],
+      "css": ["shopify_modal.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "whatnot_conditions.js",
+        "whatnot_shipping.js",
+        "whatnot_taxonomy.js"
+      ],
+      "matches": ["https://admin.shopify.com/*"]
+    }
+  ]
+}
