@@ -29,6 +29,23 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* Table Container with Horizontal Scroll */
+.whatnot-modal .table-container {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Table Container */
+.whatnot-modal table {
+  width: 100%;
+  min-width: 900px; /* Ensure minimum width for all columns */
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 0;
+}
+
 /* Modal Header */
 .whatnot-modal-header {
   display: flex;
@@ -65,14 +82,6 @@
 .whatnot-modal-close:hover {
   background: #f3f4f6;
   color: #374151;
-}
-
-/* Table Container */
-.whatnot-modal table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  margin: 0;
 }
 
 /* Table Headers */
@@ -194,11 +203,31 @@
 .whatnot-modal-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 24px 32px;
   border-top: 1px solid #e5e7eb;
   background: #fafafa;
-  gap: 12px;
+  gap: 16px;
+}
+
+.whatnot-modal-footer .footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#new-collection-container-footer {
+    display: flex;
+    gap: 8px;
+}
+
+.whatnot-modal-footer .form-control {
+  width: auto;
+  min-width: 200px;
+}
+
+.whatnot-modal-footer .whatnot-modal-confirm.compact {
+    padding: 10px 16px;
 }
 
 .whatnot-modal-cancel {

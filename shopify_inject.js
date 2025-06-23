@@ -377,192 +377,196 @@ async function fetchAndFillProductDetails(products, tbody, allData) {
     console.log("Completed deferred product detail fetching.");
 }
 
-function showModal(products, categories, whatnotConditions, whatnotShippingProfiles) {
-  // --- Cleanup old modal if it exists ---
-  const existingOverlay = document.getElementById('whatnot-modal-overlay');
-  if (existingOverlay) {
-    existingOverlay.remove();
-  }
+// --- 1. PROMISE-BASED HELPER ---
+// This makes chrome.runtime.sendMessage much more reliable and easier to work with.
+function sendMessageAsync(message) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(message, (response) => {
+            if (chrome.runtime.lastError) {
+                return reject(new Error(chrome.runtime.lastError.message));
+            }
+            if (response && response.success) {
+                resolve(response);
+            } else {
+                // If response is falsy or success is false, reject.
+                reject(new Error(response ? response.error : 'An unknown error occurred.'));
+            }
+        });
+    });
+}
 
-  // --- Create Modal Structure ---
+// --- 2. MODAL REWRITE ---
+// This function is completely rewritten for reliability.
+async function showModal(products, categories, whatnotConditions, whatnotShippingProfiles) {
+  // --- Cleanup ---
+  const existingOverlay = document.getElementById('whatnot-modal-overlay');
+  if (existingOverlay) existingOverlay.remove();
+
+  // --- Synchronous UI Creation ---
+  // Create all elements first, without any data. This ensures the UI is always consistent.
   const overlay = document.createElement('div');
   overlay.id = 'whatnot-modal-overlay';
   overlay.className = 'whatnot-modal-overlay';
-  
   const modal = document.createElement('div');
   modal.className = 'whatnot-modal';
-  
-  // --- Header ---
   const header = document.createElement('div');
   header.className = 'whatnot-modal-header';
-  header.innerHTML = `
-    <h2>Bulk Add to Whatnot (${products.length} products)</h2>
-    <button id="whatnot-modal-close" class="whatnot-modal-close">&times;</button>
-  `;
-  modal.appendChild(header);
-  
-  // --- Table ---
+  header.innerHTML = `<h2>Shop2not - Edit Products (${products.length} selected)</h2>`;
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'whatnot-modal-close';
+  closeBtn.innerHTML = '&times;';
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'table-container';
   const table = document.createElement('table');
   table.className = 'whatnot-product-table';
-  
-  const thead = document.createElement('thead');
-  thead.innerHTML = `
-    <tr>
-      <th>Product</th>
-      <th>Main Category</th>
-      <th>Sub Category</th>
-      <th>Price</th>
-      <th>Type</th>
-      <th>Condition</th>
-      <th>Shipping Profile</th>
-    </tr>
-  `;
-  table.appendChild(thead);
-  
   const tbody = document.createElement('tbody');
-  products.forEach(product => {
-    const truncatedTitle = product.title.length > 50 ? product.title.substring(0, 50) + '...' : product.title;
-    const fullTitleAttr = product.title.replace(/"/g, '&quot;');
-
-    const row = document.createElement('tr');
-    row.dataset.productId = product.id;
-    row.innerHTML = `
-      <td class="product-info">
-        <img src="${product.image}" class="product-thumbnail-small" alt="${product.title}">
-        <div>
-          <div class="product-title" title="${fullTitleAttr}">${truncatedTitle}</div>
-          <div class="product-type">${product.productType}</div>
-        </div>
-      </td>
-      <td>
-        <select name="mainCategory" class="form-control main-category-dropdown">
-          <option value="">Loading...</option>
-          ${Object.keys(categories).sort().map(cat => `<option value="${cat}">${cat}</option>`).join('')}
-        </select>
-      </td>
-      <td>
-        <select name="subCategory" class="form-control sub-category-dropdown" style="display: none;">
-          <option value="">Select...</option>
-        </select>
-      </td>
-      <td>
-        <input type="number" class="form-control" name="price" value="${product.price}" placeholder="e.g., 25.00">
-      </td>
-      <td>
-        <select class="form-control" name="type">
-          <option value="Auction" selected>Auction</option>
-          <option value="Buy it Now">Buy it Now</option>
-          <option value="Giveaway">Giveaway</option>
-        </select>
-      </td>
-      <td>
-        <select class="form-control" name="condition">
-          <option value="">Loading...</option>
-        </select>
-      </td>
-      <td>
-        <select class="form-control" name="shippingProfile">
-          <option value="">Loading...</option>
-          ${Object.entries(whatnotShippingProfiles).map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}
-        </select>
-      </td>
-    `;
-    tbody.appendChild(row);
-  });
-  table.appendChild(tbody);
-  modal.appendChild(table);
-  
-  // --- Footer with Action Button ---
   const footer = document.createElement('div');
   footer.className = 'whatnot-modal-footer';
-  footer.innerHTML = `
-    <button id="cancel-btn" class="whatnot-modal-cancel">Cancel</button>
-    <button id="generate-csv-btn" class="whatnot-modal-confirm">Confirm & Push to Whatnot (${products.length})</button>
-  `;
-  modal.appendChild(footer);
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'whatnot-modal-cancel';
+  cancelBtn.textContent = 'Cancel';
+  const actionsWrapper = document.createElement('div');
+  actionsWrapper.className = 'footer-actions';
+  const collectionSelect = document.createElement('select');
+  collectionSelect.className = 'form-control';
+  const createOption = new Option('+ Create new collection', '__CREATE_NEW__');
+  createOption.style.fontStyle = 'italic';
+  const newCollectionContainer = document.createElement('div');
+  newCollectionContainer.id = 'new-collection-container-footer';
+  newCollectionContainer.style.display = 'none';
+  const newCollectionInput = document.createElement('input');
+  newCollectionInput.type = 'text';
+  newCollectionInput.className = 'form-control';
+  newCollectionInput.placeholder = 'New collection name...';
+  const createCollectionBtn = document.createElement('button');
+  createCollectionBtn.className = 'whatnot-modal-confirm compact';
+  createCollectionBtn.textContent = 'Create';
+  const addToCollectionBtn = document.createElement('button');
+  addToCollectionBtn.className = 'whatnot-modal-confirm';
+  addToCollectionBtn.textContent = 'Add to Collection';
+  addToCollectionBtn.disabled = true;
 
+  // Assemble the UI
+  header.appendChild(closeBtn);
+  table.innerHTML = `<thead><tr><th>Product</th><th>Main Category</th><th>Sub Category</th><th>Price</th><th>Type</th><th>Condition</th><th>Shipping Profile</th></tr></thead>`;
+  products.forEach(product => {
+      const row = document.createElement('tr');
+      row.dataset.productId = product.id;
+      row.innerHTML = `
+        <td class="product-info"><img src="${product.image}" class="product-thumbnail-small" alt=""><div><div class="product-title">${product.title}</div></div></td>
+        <td><select name="mainCategory" class="form-control main-category-dropdown"><option value="">Select...</option>${Object.keys(categories).sort().map(cat => `<option value="${cat}">${cat}</option>`).join('')}</select></td>
+        <td><select name="subCategory" class="form-control sub-category-dropdown" style="display: none;"><option value="">Select...</option></select></td>
+        <td><input type="number" class="form-control" name="price" value="${product.price}" placeholder="e.g., 25.00"></td>
+        <td><select class="form-control" name="type"><option selected>Auction</option><option>Buy it Now</option><option>Giveaway</option></select></td>
+        <td><select class="form-control" name="condition"><option value="">Select...</option></select></td>
+        <td><select class="form-control" name="shippingProfile"><option value="">Select...</option>${Object.entries(whatnotShippingProfiles).map(([id, name]) => `<option value="${id}">${name}</option>`).join('')}</select></td>
+      `;
+      tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+  tableContainer.appendChild(table);
+  collectionSelect.add(createOption);
+  newCollectionContainer.append(newCollectionInput, createCollectionBtn);
+  actionsWrapper.append(newCollectionContainer, collectionSelect, addToCollectionBtn);
+  footer.append(cancelBtn, actionsWrapper);
+  modal.append(header, tableContainer, footer);
   overlay.appendChild(modal);
-  document.body.appendChild(overlay);
-
-  // --- Start fetching full details after modal is shown ---
-  fetchAndFillProductDetails(products, tbody, { categories, whatnotConditions, whatnotShippingProfiles });
-
-  // --- Event Listeners ---
-  const eventListeners = [];
   
+  // --- Asynchronous Data & Logic ---
+  // Now that the UI is securely on the page, we can add data and logic.
+  
+  // Populate dropdown with collections from background script.
+  try {
+      const response = await sendMessageAsync({ action: 'getCollections' });
+      Object.keys(response.collections).sort().forEach(name => {
+        collectionSelect.insertBefore(new Option(name, name), createOption);
+      });
+  } catch (e) {
+      console.error("Shop2not: Could not fetch collections.", e.message);
+      // Even if this fails, the modal will still work, just without pre-populated collections.
+  }
+
+  // Handle closing the modal
   const closeModal = () => {
-    // Remove all event listeners
-    eventListeners.forEach(({ element, event, handler }) => {
-      element.removeEventListener(event, handler);
-    });
-    eventListeners.length = 0; // Clear the array
-    
-    // Remove the overlay
     overlay.remove();
-    
-    // Clean up any remaining event listeners or state
-    console.log("Modal closed and cleaned up");
-    
-    // Restart command polling so the extension can be used again
     initializeCommandPolling();
   };
+  closeBtn.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 
-  // Helper function to add event listeners with cleanup tracking
-  const addEventListenerWithCleanup = (element, event, handler) => {
-    element.addEventListener(event, handler);
-    eventListeners.push({ element, event, handler });
-  };
-
-  addEventListenerWithCleanup(document.getElementById('whatnot-modal-close'), 'click', closeModal);
-  addEventListenerWithCleanup(document.getElementById('cancel-btn'), 'click', closeModal);
-  addEventListenerWithCleanup(document.getElementById('generate-csv-btn'), 'click', () => {
-    generateCsv(products);
-    closeModal();
+  // Handle collection selection logic
+  collectionSelect.addEventListener('change', () => {
+    const isCreateNew = collectionSelect.value === '__CREATE_NEW__';
+    const isSelectionValid = collectionSelect.value && !isCreateNew;
+    newCollectionContainer.style.display = isCreateNew ? 'flex' : 'none';
+    collectionSelect.style.display = isCreateNew ? 'none' : 'block';
+    addToCollectionBtn.disabled = !isSelectionValid;
+    if (isCreateNew) newCollectionInput.focus();
   });
   
-  // Close modal when clicking outside of it
-  addEventListenerWithCleanup(overlay, 'click', (e) => {
-    if (e.target === overlay) {
+  // Handle new collection creation
+  const createNewCollectionAction = async () => {
+      const name = newCollectionInput.value.trim();
+      if (!name || !/^[a-zA-Z0-9\s\-_]+$/.test(name) || name.length > 50) {
+        return alert('Invalid collection name. Max 50 chars, no special characters.');
+      }
+      try {
+        const { collections } = await sendMessageAsync({ action: 'getCollections' });
+        if (collections[name]) return alert('Collection name already exists.');
+        
+        collections[name] = { products: [], createdAt: Date.now() };
+        await sendMessageAsync({ action: 'saveCollections', collections });
+        
+        const newOption = new Option(name, name, true, true);
+        collectionSelect.insertBefore(newOption, createOption);
+        collectionSelect.dispatchEvent(new Event('change'));
+      } catch (e) {
+          alert(`Error creating collection: ${e.message}`);
+      }
+  };
+  createCollectionBtn.addEventListener('click', createNewCollectionAction);
+  newCollectionInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); createNewCollectionAction(); } });
+
+  // Handle final "Add to Collection" button click
+  addToCollectionBtn.addEventListener('click', async () => {
+    const collectionName = collectionSelect.value;
+    if (!collectionName || collectionName === '__CREATE_NEW__') return;
+    
+    addToCollectionBtn.disabled = true;
+    addToCollectionBtn.textContent = 'Adding...';
+
+    try {
+      await addProductsToCollection(products, collectionName);
+      alert(`Successfully added ${products.length} products to "${collectionName}"!`);
       closeModal();
+    } catch(e) {
+      alert(`Error adding to collection: ${e.message}`);
+      addToCollectionBtn.disabled = false;
+      addToCollectionBtn.textContent = 'Add to Collection';
     }
   });
   
-  // Handle dropdown changes
-  const handleDropdownChange = (e) => {
-    if (e.target.matches('.main-category-dropdown')) {
-      const mainCategory = e.target.value;
-      const row = e.target.closest('tr');
-      const subCategoryDropdown = row.querySelector('.sub-category-dropdown');
-      const conditionDropdown = row.querySelector('[name="condition"]');
-      
-      // Update subcategory dropdown
-      subCategoryDropdown.innerHTML = '<option value="">Select...</option>';
-      
-      if (mainCategory && categories[mainCategory] && categories[mainCategory].length > 0) {
-        const subCategories = categories[mainCategory];
-        subCategories.forEach(sub => {
-          subCategoryDropdown.add(new Option(sub, sub));
-        });
-        subCategoryDropdown.style.display = 'block';
-      } else {
-        subCategoryDropdown.style.display = 'none';
-      }
-      
-      // Update condition dropdown based on selected category
-      conditionDropdown.innerHTML = '<option value="">Select...</option>';
-      if (mainCategory && whatnotConditions[mainCategory]) {
-        const conditions = whatnotConditions[mainCategory];
-        conditions.forEach(condition => {
-          conditionDropdown.add(new Option(condition, condition));
-        });
-      }
-    } else if (e.target.matches('.sub-category-dropdown')) {
-      // For future use: if you want conditions to be dependent on subcategory as well
-      // Currently conditions are only dependent on main category
-    }
-  };
+  // --- Post-render data fetching for table ---
+  document.body.appendChild(overlay);
+  fetchAndFillProductDetails(products, tbody, { categories, whatnotConditions, whatnotShippingProfiles });
   
-  addEventListenerWithCleanup(tbody, 'change', handleDropdownChange);
+  // Event delegation for category/condition dropdowns
+  tbody.addEventListener('change', e => {
+    if (e.target.matches('.main-category-dropdown')) {
+        const mainCategory = e.target.value;
+        const row = e.target.closest('tr');
+        const subCategoryDropdown = row.querySelector('.sub-category-dropdown');
+        const conditionDropdown = row.querySelector('[name="condition"]');
+        const subCategories = categories[mainCategory] || [];
+        subCategoryDropdown.innerHTML = '<option value="">Select...</option>';
+        subCategories.forEach(sub => subCategoryDropdown.add(new Option(sub, sub)));
+        subCategoryDropdown.style.display = subCategories.length > 0 ? 'block' : 'none';
+        const conditions = whatnotConditions[mainCategory] || [];
+        conditionDropdown.innerHTML = '<option value="">Select...</option>';
+        conditions.forEach(condition => conditionDropdown.add(new Option(condition, condition)));
+    }
+  });
 }
 
 /**
@@ -773,6 +777,34 @@ function initializeCommandPolling() {
       start(); // Start the main logic
     }
   }, 500); // Check every 500ms
+}
+
+// --- 3. REWRITTEN SAVE FUNCTION ---
+async function addProductsToCollection(products, collectionName) {
+    const { collections } = await sendMessageAsync({ action: 'getCollections' });
+    if (!collections[collectionName]) {
+        // This case should not happen with the new UI, but is a safe fallback.
+        collections[collectionName] = { products: [], createdAt: Date.now() };
+    }
+    
+    const processedProducts = [];
+    const tbody = document.querySelector('.whatnot-product-table tbody');
+    if (!tbody) throw new Error('Could not find product table.');
+    
+    tbody.querySelectorAll('tr').forEach(row => {
+      const product = products.find(p => p.id.toString() === row.dataset.productId);
+      if (!product) return;
+      const getVal = (name) => row.querySelector(`[name=${name}]`) ? row.querySelector(`[name=${name}]`).value : '';
+      processedProducts.push({
+        id: product.id, title: product.title, description: product.description, image: product.image, productType: product.productType,
+        mainCategory: getVal('mainCategory'), subCategory: getVal('subCategory'), price: getVal('price'), type: getVal('type'),
+        condition: getVal('condition'), shippingProfile: getVal('shippingProfile'), sku: product.sku, quantity: product.quantity,
+        weight: product.weight, weightUnit: product.weightUnit, images: product.images || []
+      });
+    });
+    
+    collections[collectionName].products.push(...processedProducts);
+    await sendMessageAsync({ action: 'saveCollections', collections });
 }
 
 initializeCommandPolling();

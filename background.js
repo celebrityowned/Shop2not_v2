@@ -24,17 +24,37 @@ async function fetchProductJson(productId, storeBaseUrl) {
   }
 }
 
+// Centralized Collection Management
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Existing listener for product details
   if (request.action === 'fetchProductDetails') {
-    // Dynamically determine the store's base URL from the sender tab.
-    // This is crucial for the API call to work correctly.
     const adminUrl = new URL(sender.tab.url);
-    const origin = adminUrl.origin; // e.g., "https://admin.shopify.com"
+    const origin = adminUrl.origin;
     const storePathMatch = adminUrl.pathname.match(/^(\/store\/[^/]+)/);
     const storePath = storePathMatch ? storePathMatch[0] : '';
     const storeBaseUrl = `${origin}${storePath}`;
 
     fetchProductJson(request.productId, storeBaseUrl).then(sendResponse);
-    return true; // Keep the message channel open for the async response
+    return true; // Keep channel open for async response
+  }
+
+  // New listener to get all collections
+  if (request.action === 'getCollections') {
+    chrome.storage.local.get('collections', ({ collections = {} }) => {
+      sendResponse({ success: true, collections });
+    });
+    return true; // Required for async sendResponse
+  }
+
+  // New listener to save collections
+  if (request.action === 'saveCollections') {
+    chrome.storage.local.set({ collections: request.collections }, () => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        sendResponse({ success: true });
+      }
+    });
+    return true; // Required for async sendResponse
   }
 }); 

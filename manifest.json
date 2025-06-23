@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Shopify to Whatnot",
+  "name": "Shop2not - Save Collections",
   "version": "1.0",
   "description": "A Chrome extension to export Shopify products to a Whatnot-compatible CSV format.",
-  "permissions": ["activeTab", "scripting", "cookies"],
+  "permissions": ["activeTab", "scripting", "cookies", "storage"],
   "host_permissions": [
     "https://admin.shopify.com/*"
   ],

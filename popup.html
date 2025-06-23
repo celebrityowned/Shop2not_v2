@@ -1,14 +1,136 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Bulk Add to Whatnot</title>
+    <title>Shop2not - Save Collections</title>
     <style>
-      body { min-width: 200px; }
-      button { width: 100%; padding: 10px; }
+      body { 
+        min-width: 300px; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      
+      .tab-container {
+        display: flex;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .tab {
+        flex: 1;
+        padding: 12px 16px;
+        background: #f9fafb;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: #6b7280;
+        transition: all 0.2s ease;
+      }
+      
+      .tab.active {
+        background: #ffffff;
+        color: #111827;
+        border-bottom: 2px solid #3b82f6;
+      }
+      
+      .tab:hover:not(.active) {
+        background: #f3f4f6;
+        color: #374151;
+      }
+      
+      .tab-content {
+        padding: 20px;
+        display: none;
+      }
+      
+      .tab-content.active {
+        display: block;
+      }
+      
+      button { 
+        width: 100%; 
+        padding: 12px 16px; 
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-bottom: 8px;
+      }
+      
+      button:hover {
+        background: #2563eb;
+      }
+      
+      button:active {
+        background: #1d4ed8;
+      }
+      
+      .collections-controls {
+        margin-bottom: 16px;
+      }
+      
+      select, input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        font-size: 14px;
+        margin-bottom: 8px;
+        box-sizing: border-box;
+      }
+      
+      select:focus, input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      
+      .collection-info {
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 8px;
+      }
+      
+      .delete-btn {
+        background: #dc2626;
+        margin-top: 8px;
+      }
+      
+      .delete-btn:hover {
+        background: #b91c1c;
+      }
     </style>
   </head>
   <body>
-    <button id="open-modal">Bulk Add to Whatnot</button>
+    <div class="tab-container">
+      <button class="tab active" data-tab="bulk-add">Bulk Add</button>
+      <button class="tab" data-tab="collections">Collections</button>
+    </div>
+    
+    <div id="bulk-add" class="tab-content active">
+      <button id="open-modal">Bulk Add to Whatnot</button>
+    </div>
+    
+    <div id="collections" class="tab-content">
+      <div class="collections-controls">
+        <select id="collection-select">
+          <option value="">Select a collection...</option>
+        </select>
+        <input type="text" id="new-collection-name" placeholder="Enter new collection name..." maxlength="50" pattern="[a-zA-Z0-9\s\-_]+" title="Only letters, numbers, spaces, hyphens, and underscores allowed">
+        <button id="create-collection">Create Collection</button>
+      </div>
+      
+      <div id="collection-actions" style="display: none;">
+        <button id="download-collection">Download Collection</button>
+        <button id="delete-collection" class="delete-btn">Delete Collection</button>
+        <div class="collection-info" id="collection-info"></div>
+      </div>
+    </div>
+    
     <script src="popup.js"></script>
   </body>
 </html>
