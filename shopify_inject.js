@@ -488,27 +488,47 @@ function showModal(products, categories, whatnotConditions, whatnotShippingProfi
   fetchAndFillProductDetails(products, tbody, { categories, whatnotConditions, whatnotShippingProfiles });
 
   // --- Event Listeners ---
+  const eventListeners = [];
+  
   const closeModal = () => {
+    // Remove all event listeners
+    eventListeners.forEach(({ element, event, handler }) => {
+      element.removeEventListener(event, handler);
+    });
+    eventListeners.length = 0; // Clear the array
+    
+    // Remove the overlay
     overlay.remove();
+    
     // Clean up any remaining event listeners or state
     console.log("Modal closed and cleaned up");
+    
+    // Restart command polling so the extension can be used again
+    initializeCommandPolling();
   };
 
-  document.getElementById('whatnot-modal-close').addEventListener('click', closeModal);
-  document.getElementById('cancel-btn').addEventListener('click', closeModal);
-  document.getElementById('generate-csv-btn').addEventListener('click', () => {
+  // Helper function to add event listeners with cleanup tracking
+  const addEventListenerWithCleanup = (element, event, handler) => {
+    element.addEventListener(event, handler);
+    eventListeners.push({ element, event, handler });
+  };
+
+  addEventListenerWithCleanup(document.getElementById('whatnot-modal-close'), 'click', closeModal);
+  addEventListenerWithCleanup(document.getElementById('cancel-btn'), 'click', closeModal);
+  addEventListenerWithCleanup(document.getElementById('generate-csv-btn'), 'click', () => {
     generateCsv(products);
     closeModal();
   });
   
   // Close modal when clicking outside of it
-  overlay.addEventListener('click', (e) => {
+  addEventListenerWithCleanup(overlay, 'click', (e) => {
     if (e.target === overlay) {
       closeModal();
     }
   });
   
-  tbody.addEventListener('change', e => {
+  // Handle dropdown changes
+  const handleDropdownChange = (e) => {
     if (e.target.matches('.main-category-dropdown')) {
       const mainCategory = e.target.value;
       const row = e.target.closest('tr');
@@ -540,7 +560,9 @@ function showModal(products, categories, whatnotConditions, whatnotShippingProfi
       // For future use: if you want conditions to be dependent on subcategory as well
       // Currently conditions are only dependent on main category
     }
-  });
+  };
+  
+  addEventListenerWithCleanup(tbody, 'change', handleDropdownChange);
 }
 
 /**
@@ -717,16 +739,23 @@ async function start() {
   
   if (products.length === 0) {
     alert("No products selected, or could not read product details. Please select at least one product and try again.");
+    // Restart polling even if no products found
+    initializeCommandPolling();
     return;
   }
   
   const allData = loadDataFromDOM();
   if (!allData) {
+    // Restart polling even if data loading failed
+    initializeCommandPolling();
     return; // Error is alerted within loadDataFromDOM
   }
 
   // All data is loaded, now call the modal function which is defined in modal.js
   showModal(products, allData.categories, allData.whatnotConditions, allData.whatnotShippingProfiles);
+  
+  // Restart polling after modal is shown (it will be active until modal is closed)
+  // The polling will be restarted when the modal closes
 }
 
 /**
