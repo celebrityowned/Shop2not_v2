@@ -37,6 +37,7 @@
   padding: 24px 32px;
   border-bottom: 1px solid #e5e7eb;
   background: #fafafa;
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .whatnot-modal-header h2 {
@@ -73,6 +74,34 @@
   border-collapse: collapse;
   table-layout: fixed;
   margin: 0;
+}
+
+/* Scrollable Table Container */
+.whatnot-table-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0; /* Important for flex child to shrink */
+}
+
+/* Custom Scrollbar for Table Container */
+.whatnot-table-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.whatnot-table-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.whatnot-table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.whatnot-table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Table Headers */
@@ -199,6 +228,7 @@
   border-top: 1px solid #e5e7eb;
   background: #fafafa;
   gap: 12px;
+  flex-shrink: 0; /* Prevent footer from shrinking */
 }
 
 .whatnot-modal-cancel {
@@ -277,6 +307,11 @@
     font-size: 1.25rem;
   }
   
+  .whatnot-table-container {
+    /* Ensure proper scrolling on mobile */
+    max-height: calc(90vh - 120px); /* Account for header and footer */
+  }
+  
   .whatnot-product-table thead th,
   .whatnot-product-table tbody td {
     padding: 12px 8px;
@@ -298,22 +333,4 @@
     width: 100%;
     justify-content: center;
   }
-}
-
-/* Scrollbar Styling */
-.whatnot-modal::-webkit-scrollbar {
-  width: 8px;
-}
-
-.whatnot-modal::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-.whatnot-modal::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-.whatnot-modal::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
 }

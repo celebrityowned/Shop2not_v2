@@ -401,6 +401,10 @@ function showModal(products, categories, whatnotConditions, whatnotShippingProfi
   `;
   modal.appendChild(header);
   
+  // --- Table Container (Scrollable) ---
+  const tableContainer = document.createElement('div');
+  tableContainer.className = 'whatnot-table-container';
+  
   // --- Table ---
   const table = document.createElement('table');
   table.className = 'whatnot-product-table';
@@ -470,7 +474,8 @@ function showModal(products, categories, whatnotConditions, whatnotShippingProfi
     tbody.appendChild(row);
   });
   table.appendChild(tbody);
-  modal.appendChild(table);
+  tableContainer.appendChild(table);
+  modal.appendChild(tableContainer);
   
   // --- Footer with Action Button ---
   const footer = document.createElement('div');
