@@ -629,7 +629,9 @@ function generateCsv(products) {
         const subCat = getVal('subCategory');
         // Title and Description
         const title = product.title || '';
-        const description = product.description ? product.description.replace(/\r?\n|\r/g, ' ').replace(/"/g, '""') : '';
+        // Strip HTML tags from description for CSV export
+        const stripHtml = (html) => html ? html.replace(/<[^>]*>/g, '').replace(/\r?\n|\r/g, ' ').replace(/"/g, '""') : '';
+        const description = stripHtml(product.description);
         // Quantity, Type, Price
         const quantity = product.quantity != null ? product.quantity : '1';
         const type = getVal('type');
